@@ -1,0 +1,6 @@
+__pycache__/
+*.py[cod]
+sgim.sqlite3
+sgim_replica.sqlite3
+reporte_citas.csv
+reporte_citas.txt
