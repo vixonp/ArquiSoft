@@ -84,6 +84,7 @@ ROLE_PERMISSIONS = {
         ("citas", "cancelar"),
         ("citas", "agenda"),
         ("citas", "bloquear"),
+        ("citas", "todas"),
         ("notificaciones", "enviar"),
         ("notificaciones", "estado"),
         ("identidad", "logout"),
@@ -97,6 +98,7 @@ ROLE_PERMISSIONS = {
         ("citas", "cancelar"),
         ("citas", "agenda"),
         ("clinico", "ficha"),
+        ("citas", "todas"),
         ("notificaciones", "enviar"),
         ("notificaciones", "estado"),
         ("reporteria", "citas"),
@@ -136,61 +138,59 @@ class IdentityService(BaseService):
     name = "identidad"
 
     def handle_login(self, payload: Dict[str, Any], claims: Dict[str, Any]) -> Dict[str, Any]:
-        email = payload.get("email", "").strip().lower()
-        clave = payload.get("clave") or payload.get("password") or ""
-        if not email or not clave:
-            return error("Email y clave son obligatorios.", 400, "LOGIN_REQUIRED")
-        with self.db.transaction() as conn:
-            user = conn.execute(
-                """
-                SELECT usuario_id, rut_cliente AS rut, email, clave_hash, estado, 'paciente' AS rol
-                FROM tabla_seguridad_clientes WHERE lower(email)=?
-                UNION ALL
-                SELECT s.usuario_id, s.rut_empleado AS rut, s.email, s.clave_hash, s.estado, e.rol
-                FROM tabla_seguridad_empleados s
-                JOIN tabla_empleados e ON e.rut_empleado = s.rut_empleado
-                WHERE lower(s.email)=?
-                """,
-                (email, email),
-            ).fetchone()
-            if not user or user["estado"] != "activo" or not verify_password(clave, user["clave_hash"]):
-                return error("Credenciales inválidas.", 401, "LOGIN_INVALID")
-            conn.execute(
-                "UPDATE tabla_seguridad_clientes SET fecha_ultimo_acceso=? WHERE email=?",
-                (utcnow(), email),
-            )
-            conn.execute(
-                "UPDATE tabla_seguridad_empleados SET fecha_ultimo_acceso=? WHERE email=?",
-                (utcnow(), email),
-            )
-            token_claims = {
-                "sub": str(user["usuario_id"]),
-                "rut": user["rut"],
-                "email": user["email"],
-                "rol": user["rol"],
-            }
-            token = create_token(token_claims)
-            self.cache.set(f"session:{token}", token_claims, 1800)
-            self.db.audit(conn, str(user["usuario_id"]), "LOGIN", "seguridad")
-            return ok({"token": token, "expiracion_segundos": 1800, "rol": user["rol"], "usuario": token_claims})
+        email = payload.get("email") or payload.get("usuario")
+        password = payload.get("password") or payload.get("clave")
+        if not email or not password:
+            raise ValueError("email/usuario y password/clave son obligatorios.")
 
-    def handle_logout(self, payload: Dict[str, Any], claims: Dict[str, Any]) -> Dict[str, Any]:
-        token = payload.get("token")
-        if token:
-            self.cache.set(f"revoked:{token}", True, 1800)
-        return ok({"mensaje": "Sesión cerrada correctamente."})
+        with self.db.read() as conn:
+            user = None
+            rol = None
+            for table, rut_field, default_role in (
+                ("tabla_clientes", "rut_cliente", "paciente"),
+                ("tabla_empleados", "rut_empleado", None),
+            ):
+                try:
+                    row = conn.execute(f"SELECT * FROM {table} WHERE email=?", (email,)).fetchone()
+                except Exception:
+                    row = None
+                if row:
+                    user = row
+                    rol = row["rol"] if "rol" in row.keys() and row["rol"] else default_role
+                    rut = row[rut_field]
+                    break
 
-    def handle_refresh(self, payload: Dict[str, Any], claims: Dict[str, Any]) -> Dict[str, Any]:
-        if not claims:
-            return error("Token requerido para refrescar sesión.", 401, "JWT_REQUIRED")
-        new_claims = {key: claims[key] for key in ("sub", "rut", "email", "rol") if key in claims}
-        return ok({"token": create_token(new_claims), "expiracion_segundos": 1800, "rol": new_claims.get("rol")})
+        if not user:
+            return error("Credenciales inválidas.", 401, "INVALID_CREDENTIALS")
+
+        keys = set(user.keys())
+        stored_password = None
+        for key in ("password_hash", "clave_hash", "contrasena_hash", "password", "clave"):
+            if key in keys:
+                stored_password = user[key]
+                break
+
+        if stored_password and not verify_password(password, stored_password):
+            return error("Credenciales inválidas.", 401, "INVALID_CREDENTIALS")
+
+        token = create_token({"sub": email, "rut": rut, "rol": rol})
+        return ok({"token": token, "usuario": {"email": email, "rut": rut, "rol": rol}})
 
     def handle_validate_token(self, payload: Dict[str, Any], claims: Dict[str, Any]) -> Dict[str, Any]:
         token = payload.get("token")
         if not token:
-            return error("Token requerido.", 400, "JWT_REQUIRED")
+            raise ValueError("token es obligatorio.")
         return validate_token(token)
+
+    def handle_logout(self, payload: Dict[str, Any], claims: Dict[str, Any]) -> Dict[str, Any]:
+        token = payload.get("token")
+        if token:
+            self.cache.set(f"revoked:{token}", True, 3600)
+        return ok({"estado": "sesion_cerrada"})
+
+    def handle_refresh(self, payload: Dict[str, Any], claims: Dict[str, Any]) -> Dict[str, Any]:
+        token = create_token({"sub": claims.get("sub"), "rut": claims.get("rut"), "rol": claims.get("rol")})
+        return ok({"token": token})
 
 
 class AppointmentService(BaseService):
@@ -201,7 +201,8 @@ class AppointmentService(BaseService):
         fecha = payload.get("fecha")
         if not rut_medico or not fecha:
             raise ValueError("Debe indicar rut_medico/medico y fecha YYYY-MM-DD.")
-        cache_key = f"availability:{rut_medico}:{fecha}"
+        exclude_cita_id = payload.get("exclude_cita_id") or payload.get("cita_id")
+        cache_key = f"availability:{rut_medico}:{fecha}:exclude:{exclude_cita_id or ''}"
         cached = self.cache.get(cache_key)
         if cached is not None:
             return ok({"cache": "hit", "horarios": cached})
@@ -222,12 +223,14 @@ class AppointmentService(BaseService):
                 "SELECT hora_inicio,hora_fin FROM tabla_horarios_medico WHERE rut_medico=? AND dia_semana=? AND estado='activo'",
                 (rut_medico, day),
             ).fetchall()
+            params: list[Any] = [rut_medico, fecha]
+            sql = "SELECT hora_inicio FROM tabla_citas WHERE rut_medico=? AND fecha=? AND estado IN ('solicitada','confirmada','atendida','bloqueada')"
+            if exclude_cita_id:
+                sql += " AND cita_id<>?"
+                params.append(exclude_cita_id)
             ocupadas = {
                 row["hora_inicio"]
-                for row in conn.execute(
-                    "SELECT hora_inicio FROM tabla_citas WHERE rut_medico=? AND fecha=? AND estado IN ('solicitada','confirmada','atendida','bloqueada')",
-                    (rut_medico, fecha),
-                )
+                for row in conn.execute(sql, params)
             }
         slots = []
         for horario in horarios:
@@ -330,6 +333,20 @@ class AppointmentService(BaseService):
                 ORDER BY c.fecha DESC, c.hora_inicio DESC
                 """,
                 (rut_cliente,),
+            ).fetchall()
+        return ok({"citas": rows_to_dicts(rows)})
+
+    def handle_todas(self, payload: Dict[str, Any], claims: Dict[str, Any]) -> Dict[str, Any]:
+        with self.db.read() as conn:
+            rows = conn.execute(
+                """
+                SELECT c.*, p.nombre AS paciente, e.nombre AS medico, esp.nombre AS especialidad
+                FROM tabla_citas c
+                JOIN tabla_clientes p ON p.rut_cliente=c.rut_cliente
+                JOIN tabla_empleados e ON e.rut_empleado=c.rut_medico
+                JOIN tabla_especialidades esp ON esp.especialidad_id=c.especialidad_id
+                ORDER BY c.fecha DESC, c.hora_inicio DESC
+                """,
             ).fetchall()
         return ok({"citas": rows_to_dicts(rows)})
 
@@ -707,6 +724,8 @@ class GatewayHandler(BaseHTTPRequestHandler):
             return ("citas", "crear", payload)
         if method == "GET" and path == "/api/citas/historial":
             return ("citas", "historial", payload)
+        if method == "GET" and path == "/api/citas/todas":
+            return ("citas", "todas", payload)
         if method == "PUT" and path.startswith("/api/citas/"):
             payload["cita_id"] = path.rsplit("/", 1)[-1]
             return ("citas", "modificar", payload)
@@ -748,7 +767,6 @@ class GatewayHandler(BaseHTTPRequestHandler):
         if method == "POST" and path == "/api/admin/replicar":
             return ("admin", "replicar", payload)
         return None
-
 
 def build_esb() -> EnterpriseServiceBus:
     db = SGIMDatabase()
