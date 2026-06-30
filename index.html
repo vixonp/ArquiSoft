@@ -1,0 +1,1008 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SGIM</title>
+  <style>
+    :root {
+      --navy:    #0A2540;
+      --blue:    #0066CC;
+      --blue-lt: #E8F0FB;
+      --green:   #00875A;
+      --red:     #C0392B;
+      --amber:   #92400E;
+      --bg:      #F0F4F8;
+      --card:    #FFFFFF;
+      --text:    #111827;
+      --muted:   #6B7280;
+      --border:  #E2E8F0;
+      --sw:      240px;
+      --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      --mono: 'SF Mono', 'Fira Code', Consolas, monospace;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: var(--font); background: var(--bg); color: var(--text); min-height: 100vh; }
+
+    /* LOGIN */
+    #login-screen {
+      display: flex; align-items: center; justify-content: center;
+      min-height: 100vh; background: var(--navy);
+    }
+    .lcard {
+      background: var(--card); border-radius: 12px;
+      padding: 40px; width: 400px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.35);
+    }
+    .lcard h1 { font-size: 22px; font-weight: 800; color: var(--navy); letter-spacing: -.5px; }
+    .lcard h1 span { color: var(--blue); }
+    .lcard .sub { font-size: 12px; color: var(--muted); margin: 4px 0 26px; }
+    .ql { font-size: 10px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); display: block; margin-bottom: 8px; }
+    .rgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 20px; }
+    .rbtn {
+      padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 7px;
+      background: var(--bg); cursor: pointer; text-align: left; transition: all .13s;
+      font-family: var(--font);
+    }
+    .rbtn:hover { border-color: var(--blue); background: var(--blue-lt); }
+    .rbtn .rn { font-size: 12px; font-weight: 700; color: var(--text); }
+    .rbtn .re { font-size: 10px; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .div { display: flex; align-items: center; gap: 10px; margin: 4px 0 16px; }
+    .div::before, .div::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+    .div span { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+    .fg { margin-bottom: 12px; }
+    label { font-size: 11px; font-weight: 600; display: block; margin-bottom: 4px; }
+    input, select, textarea {
+      width: 100%; padding: 9px 12px; border: 1.5px solid var(--border); border-radius: 6px;
+      font-family: var(--font); font-size: 13px; color: var(--text); background: var(--card);
+      transition: border-color .15s, box-shadow .15s; outline: none;
+    }
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--blue); box-shadow: 0 0 0 3px rgba(0,102,204,.1);
+    }
+    .btn {
+      padding: 9px 16px; background: var(--blue); color: #fff;
+      border: none; border-radius: 6px; font-size: 13px; font-weight: 600;
+      cursor: pointer; transition: background .14s; font-family: var(--font);
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    }
+    .btn:hover { background: #0052A3; }
+    .btn:disabled { background: var(--muted); cursor: not-allowed; }
+    .btn-block { width: 100%; }
+    .btn-sm { padding: 7px 14px; font-size: 12px; }
+    .btn-ghost { background: transparent; color: var(--blue); border: 1.5px solid var(--border); }
+    .btn-ghost:hover { background: var(--blue-lt); border-color: var(--blue); }
+    .btn-danger { background: var(--red); }
+    .btn-danger:hover { background: #922b21; }
+    .btn-success { background: var(--green); }
+    .btn-success:hover { background: #006644; }
+    .lerr { color: var(--red); font-size: 12px; margin-top: 10px; text-align: center; min-height: 18px; }
+
+    /* APP */
+    #app { display: none; min-height: 100vh; }
+    .sidebar {
+      position: fixed; top: 0; left: 0;
+      width: var(--sw); height: 100vh;
+      background: var(--navy); display: flex; flex-direction: column;
+      overflow-y: auto; z-index: 100;
+    }
+    .sb-brand { padding: 22px 20px 18px; border-bottom: 1px solid rgba(255,255,255,.09); }
+    .sb-brand .logo { font-size: 16px; font-weight: 800; color: #fff; letter-spacing: -.3px; }
+    .sb-brand .logo span { color: #60A5FA; }
+    .sb-brand .tag { font-size: 9px; color: rgba(255,255,255,.3); margin-top: 3px; letter-spacing: .07em; text-transform: uppercase; }
+    .sb-user { padding: 14px 20px; border-bottom: 1px solid rgba(255,255,255,.09); }
+    .sb-user .role { font-size: 9px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: rgba(255,255,255,.4); }
+    .sb-user .name { font-size: 13px; font-weight: 600; color: #fff; margin-top: 2px; }
+    .sb-user .email { font-size: 11px; color: rgba(255,255,255,.45); margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .sb-nav { padding: 10px 0; flex: 1; }
+    .nav-sec { font-size: 9px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: rgba(255,255,255,.3); padding: 10px 20px 5px; }
+    .nav-item {
+      display: flex; align-items: center; gap: 0;
+      padding: 9px 20px; font-size: 13px; font-weight: 500;
+      color: rgba(255,255,255,.65); cursor: pointer;
+      transition: all .12s; border-left: 3px solid transparent;
+    }
+    .nav-item:hover { background: rgba(255,255,255,.07); color: #fff; }
+    .nav-item.active { background: rgba(0,102,204,.28); color: #fff; border-left-color: #60A5FA; }
+    .sb-footer { padding: 14px 20px; border-top: 1px solid rgba(255,255,255,.09); }
+    .logout-btn {
+      width: 100%; padding: 8px 12px; background: rgba(255,255,255,.07);
+      color: rgba(255,255,255,.6); border: 1px solid rgba(255,255,255,.12);
+      border-radius: 6px; font-size: 12px; font-weight: 600;
+      cursor: pointer; transition: all .13s; font-family: var(--font);
+    }
+    .logout-btn:hover { background: rgba(255,255,255,.14); color: #fff; }
+
+    /* MAIN */
+    .main { margin-left: var(--sw); padding: 28px 32px; min-height: 100vh; }
+    .ph { margin-bottom: 22px; }
+    .ph h2 { font-size: 20px; font-weight: 700; color: var(--navy); margin-bottom: 3px; }
+    .ph p  { font-size: 13px; color: var(--muted); }
+
+    /* PANEL */
+    .panel { background: var(--card); border-radius: 9px; border: 1px solid var(--border); padding: 22px; margin-bottom: 18px; }
+    .pt {
+      font-size: 12px; font-weight: 700; color: var(--muted);
+      letter-spacing: .07em; text-transform: uppercase;
+      margin-bottom: 16px; padding-bottom: 11px; border-bottom: 1px solid var(--border);
+    }
+    .g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .g3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+    textarea { resize: vertical; min-height: 66px; }
+
+    /* RESPONSE */
+    .rp { background: #0D1F33; border-radius: 8px; padding: 18px; margin-top: 14px; border: 1px solid rgba(255,255,255,.05); }
+    .rp-hd { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+    .rp-lbl { font-size: 10px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; color: rgba(255,255,255,.3); font-family: var(--mono); }
+    .rp-status { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 4px; font-family: var(--mono); }
+    .s-ok  { background: rgba(0,135,90,.3);  color: #4ADE80; }
+    .s-err { background: rgba(192,57,43,.3); color: #F87171; }
+    .s-wrn { background: rgba(146,64,14,.3); color: #FCD34D; }
+    .rp-body { font-family: var(--mono); font-size: 11.5px; color: #94A3B8; white-space: pre-wrap; line-height: 1.65; max-height: 260px; overflow-y: auto; }
+    .rp-body .k { color: #7DD3FC; }
+    .rp-body .s { color: #86EFAC; }
+    .rp-body .n { color: #FCA5A5; }
+    .rp-body .b { color: #C4B5FD; }
+    .rp-body .nl{ color: #6B7280; }
+
+    /* TABLE */
+    .tbl { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+    .tbl th { text-align: left; padding: 8px 10px; font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); border-bottom: 1.5px solid var(--border); white-space: nowrap; }
+    .tbl td { padding: 9px 10px; border-bottom: 1px solid var(--border); }
+    .tbl tr:last-child td { border-bottom: none; }
+    .tbl tr:hover td { background: var(--bg); }
+
+    /* CITA ROW seleccionable */
+    .cita-row { cursor: pointer; transition: background .12s; }
+    .cita-row:hover td { background: var(--blue-lt) !important; }
+    .cita-row.selected td { background: #dbeafe !important; box-shadow: inset 3px 0 0 var(--blue); }
+    .cita-row td:first-child { border-left: 3px solid transparent; }
+    .cita-row.selected td:first-child { border-left-color: var(--blue); }
+
+    /* CITA DETALLE CARD */
+    .cita-sel-card {
+      border: 1.5px solid var(--blue); border-radius: 8px;
+      padding: 14px 16px; background: var(--blue-lt);
+      margin-bottom: 14px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    }
+    .cita-sel-card .cs-label { font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--blue); margin-bottom: 2px; }
+    .cita-sel-card .cs-val { font-size: 13px; font-weight: 600; color: var(--navy); }
+    .cita-sel-item { min-width: 90px; }
+    .cita-sel-clear { margin-left: auto; font-size: 11px; color: var(--blue); cursor: pointer; text-decoration: underline; white-space: nowrap; }
+
+    /* BADGES */
+    .badge { display: inline-block; padding: 2px 7px; border-radius: 4px; font-size: 10.5px; font-weight: 700; }
+    .b-blue  { background: var(--blue-lt); color: var(--blue); }
+    .b-green { background: rgba(0,135,90,.1); color: var(--green); }
+    .b-red   { background: rgba(192,57,43,.1); color: var(--red); }
+    .b-grey  { background: var(--bg); color: var(--muted); }
+    .b-amber { background: rgba(146,64,14,.1); color: var(--amber); }
+
+    /* MISC */
+    .loader { display: inline-block; width: 13px; height: 13px; border: 2px solid rgba(255,255,255,.2); border-top-color: #60A5FA; border-radius: 50%; animation: spin .7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .empty { text-align: center; padding: 28px; color: var(--muted); font-size: 13px; }
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-bottom: 16px; }
+    .sc { background: var(--bg); border-radius: 8px; padding: 14px 16px; }
+    .sc .sl { font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+    .sc .sv { font-size: 22px; font-weight: 800; color: var(--navy); margin-top: 4px; }
+    .sc .ss { font-size: 11px; color: var(--muted); margin-top: 1px; }
+    .pills { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .pill {
+      padding: 5px 13px; border-radius: 20px; font-size: 12px; font-weight: 600;
+      background: var(--blue-lt); color: var(--blue);
+      cursor: pointer; border: 1.5px solid transparent; transition: all .13s;
+    }
+    .pill:hover { border-color: var(--blue); }
+    .pill.sel { background: var(--blue); color: #fff; }
+    code { font-family: var(--mono); font-size: 11.5px; background: var(--bg); padding: 1px 5px; border-radius: 3px; }
+    .mt12 { margin-top: 12px; }
+    .mt4  { margin-top: 4px; }
+    .info-msg { font-size: 12px; color: var(--muted); padding: 10px 0 2px; }
+    .filter-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+    .filter-bar select { width: auto; min-width: 130px; }
+    .filter-bar input[type=text] { width: auto; min-width: 180px; }
+  </style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="lcard">
+    <h1>SG<span>IM</span></h1>
+    <p class="sub">Sistema de Gestión de Información Médica &mdash; Clínica MediCentro</p>
+
+    <span class="ql">Acceso rápido</span>
+    <div class="rgrid">
+      <button class="rbtn" onclick="quickLogin('paciente')">
+        <div class="rn">Paciente</div>
+        <div class="re">ana.paciente@sgim.cl</div>
+      </button>
+      <button class="rbtn" onclick="quickLogin('medico')">
+        <div class="rn">Médico</div>
+        <div class="re">camila.medico@sgim.cl</div>
+      </button>
+      <button class="rbtn" onclick="quickLogin('recepcionista')">
+        <div class="rn">Recepcionista</div>
+        <div class="re">recepcion@sgim.cl</div>
+      </button>
+      <button class="rbtn" onclick="quickLogin('administrador')">
+        <div class="rn">Administrador</div>
+        <div class="re">admin@sgim.cl</div>
+      </button>
+    </div>
+
+    <div class="div"><span>o ingresar manualmente</span></div>
+
+    <div class="fg"><label>Email</label>
+      <input type="email" id="l-email" placeholder="usuario@sgim.cl"></div>
+    <div class="fg"><label>Contraseña</label>
+      <input type="password" id="l-pass" value="sgim123"></div>
+    <button class="btn btn-block" id="l-btn" onclick="doLogin()">Iniciar sesión</button>
+    <div class="lerr" id="l-err"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <aside class="sidebar">
+    <div class="sb-brand">
+      <div class="logo">SG<span>IM</span></div>
+    </div>
+    <div class="sb-user">
+      <div class="role" id="sb-role"></div>
+      <div class="name" id="sb-name"></div>
+      <div class="email" id="sb-email"></div>
+    </div>
+    <nav class="sb-nav" id="sb-nav"></nav>
+    <div class="sb-footer">
+      <button class="logout-btn" onclick="doLogout()">Cerrar sesión</button>
+    </div>
+  </aside>
+  <main class="main" id="main"></main>
+</div>
+
+<script>
+const S   = { token: null, user: null };
+const GW  = 'http://127.0.0.1:8000';
+const DEMO = {
+  paciente:      'ana.paciente@sgim.cl',
+  medico:        'camila.medico@sgim.cl',
+  recepcionista: 'recepcion@sgim.cl',
+  administrador: 'admin@sgim.cl',
+};
+
+// ── Helpers ──────────────────────────────────────────────────────────
+async function api(method, path, body = null) {
+  const h = { 'Content-Type': 'application/json' };
+  if (S.token) h['Authorization'] = `Bearer ${S.token}`;
+  const opts = { method, headers: h };
+  if (body && method !== 'GET') opts.body = JSON.stringify(body);
+  const url = method === 'GET' && body
+    ? GW + path + '?' + new URLSearchParams(body)
+    : GW + path;
+  try {
+    return await (await fetch(url, opts)).json();
+  } catch (e) {
+    return { ok: false, status: 503, error: { code: 'GATEWAY_UNAVAILABLE', message: e.message } };
+  }
+}
+
+function nextWD(day) {
+  const js = [1,2,3,4,5,6,0];
+  const t  = js[day];
+  const d  = new Date();
+  let diff = (t - d.getDay() + 7) % 7 || 7;
+  d.setDate(d.getDate() + diff);
+  return d.toISOString().slice(0,10);
+}
+
+function jsonHL(obj) {
+  return JSON.stringify(obj, null, 2).replace(
+    /("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+\.?\d*([eE][+-]?\d+)?)/g,
+    m => {
+      if (/^"/.test(m)) return m.endsWith(':') ? `<span class="k">${m}</span>` : `<span class="s">${m}</span>`;
+      if (/true|false/.test(m)) return `<span class="b">${m}</span>`;
+      if (/null/.test(m)) return `<span class="nl">${m}</span>`;
+      return `<span class="n">${m}</span>`;
+    });
+}
+
+function rp(res, label = 'Respuesta ESB / API Gateway') {
+  const ok  = res?.ok;
+  const st  = res?.status ?? '—';
+  const cls = ok ? 's-ok' : (st >= 500 ? 's-err' : 's-wrn');
+  return `<div class="rp">
+    <div class="rp-hd">
+      <span class="rp-lbl">${label}</span>
+      <span class="rp-status ${cls}">HTTP ${st} ${ok ? 'OK' : 'ERROR'}</span>
+    </div>
+    <div class="rp-body">${jsonHL(res)}</div>
+  </div>`;
+}
+
+function ld(el) { if(el) el.innerHTML = '<div class="loader"></div>'; }
+
+function estadoBadge(e) {
+  const m = { confirmada:'b-green', solicitada:'b-blue', cancelada:'b-red', atendida:'b-grey', inasistida:'b-amber', bloqueada:'b-amber' };
+  return `<span class="badge ${m[e]||'b-grey'}">${e}</span>`;
+}
+
+// ── Auth ─────────────────────────────────────────────────────────────
+async function quickLogin(role) {
+  document.getElementById('l-email').value = DEMO[role];
+  document.getElementById('l-pass').value  = 'sgim123';
+  doLogin();
+}
+
+async function doLogin() {
+  const email = document.getElementById('l-email').value.trim();
+  const clave = document.getElementById('l-pass').value;
+  if (!email || !clave) { setErr('Completa email y contraseña.'); return; }
+  const btn = document.getElementById('l-btn');
+  btn.disabled = true; btn.innerHTML = '<div class="loader"></div>';
+  setErr('');
+  const res = await api('POST', '/auth/login', { email, clave });
+  btn.disabled = false; btn.textContent = 'Iniciar sesión';
+  if (!res.ok) { setErr(res.error?.message || 'Credenciales inválidas.'); return; }
+  S.token = res.data.token;
+  S.user  = res.data.usuario;
+  initApp();
+}
+
+function setErr(m) { document.getElementById('l-err').textContent = m; }
+
+function doLogout() {
+  S.token = S.user = null;
+  document.getElementById('app').style.display          = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('l-email').value = '';
+}
+
+// ── App ───────────────────────────────────────────────────────────────
+const ROL_LABEL = { paciente:'Paciente', medico:'Médico', recepcionista:'Recepcionista', administrador:'Administrador' };
+
+const NAV = {
+  paciente:      [['Disponibilidad','pac-disp'],['Agendar cita','pac-agen'],['Mis citas','pac-hist'],['Ficha clínica','pac-fich']],
+  medico:        [['Agenda del día','med-agen'],['Registrar atención','med-aten'],['Emitir receta','med-rec']],
+  recepcionista: [['Disponibilidad','rec-disp'],['Reprogramar cita','rec-repr'],['Cancelar cita','rec-canc']],
+  administrador: [['Usuarios','adm-usu'],['Reporte de citas','adm-rep'],['Logs de auditoría','adm-log'],['Replicar BD','adm-repl']],
+};
+
+function initApp() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').style.display          = 'block';
+  const u = S.user;
+  document.getElementById('sb-role').textContent  = ROL_LABEL[u.rol] || u.rol;
+  document.getElementById('sb-name').textContent  = u.rut;
+  document.getElementById('sb-email').textContent = u.email;
+  buildNav(u.rol);
+}
+
+function buildNav(rol) {
+  const items = NAV[rol] || [];
+  document.getElementById('sb-nav').innerHTML =
+    `<div class="nav-sec">Portal ${ROL_LABEL[rol]||rol}</div>` +
+    items.map(([lbl, v]) =>
+      `<div class="nav-item" data-v="${v}" onclick="go('${v}')">${lbl}</div>`).join('');
+  if (items.length) go(items[0][1]);
+}
+
+function go(view) {
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.toggle('active', el.dataset.v === view));
+  const fn = V[view];
+  if (fn) document.getElementById('main').innerHTML = fn();
+  // Auto-cargar citas al entrar a vistas de recepcionista que las necesiten
+  if (view === 'rec-repr') cargarCitasParaReprogramar();
+  if (view === 'rec-canc') cargarCitasParaCancelar();
+}
+
+// ── Estado compartido recepcionista ───────────────────────────────────
+const REC = { citas: [], citaSelRepr: null, citaSelCanc: null };
+
+async function fetchCitasRec() {
+  // Reutiliza el endpoint de historial (trae todas las citas activas del sistema)
+  return await api('GET', '/api/citas/todas');
+}
+
+function citasTabla(citas, onSelectFn, selectedId) {
+  if (!citas.length) return `<div class="empty">No hay citas registradas.</div>`;
+  return `<table class="tbl">
+    <thead><tr><th>ID</th><th>Paciente</th><th>Médico</th><th>Fecha</th><th>Hora</th><th>Estado</th></tr></thead>
+    <tbody>${citas.map(c => `
+      <tr class="cita-row${selectedId == c.cita_id ? ' selected' : ''}" onclick="${onSelectFn}(${c.cita_id})">
+        <td><code>${c.cita_id}</code></td>
+        <td>${c.paciente || c.rut_cliente || '—'}</td>
+        <td>${c.medico || '—'}</td>
+        <td>${c.fecha}</td>
+        <td>${c.hora_inicio}</td>
+        <td>${estadoBadge(c.estado)}</td>
+      </tr>`).join('')}
+    </tbody>
+  </table>`;
+}
+
+function citaSelCard(cita, clearFn) {
+  return `<div class="cita-sel-card">
+    <div class="cita-sel-item"><div class="cs-label">ID</div><div class="cs-val">#${cita.cita_id}</div></div>
+    <div class="cita-sel-item"><div class="cs-label">Paciente</div><div class="cs-val">${cita.paciente || cita.rut_cliente || '—'}</div></div>
+    <div class="cita-sel-item"><div class="cs-label">Médico</div><div class="cs-val">${cita.medico || '—'}</div></div>
+    <div class="cita-sel-item"><div class="cs-label">Fecha actual</div><div class="cs-val">${cita.fecha}</div></div>
+    <div class="cita-sel-item"><div class="cs-label">Hora actual</div><div class="cs-val">${cita.hora_inicio}</div></div>
+    <div class="cita-sel-item"><div class="cs-label">Estado</div><div class="cs-val">${estadoBadge(cita.estado)}</div></div>
+    <span class="cita-sel-clear" onclick="${clearFn}()">Deseleccionar</span>
+  </div>`;
+}
+
+// ── REPROGRAMAR ────────────────────────────────────────────────────────
+async function cargarCitasParaReprogramar() {
+  const et = document.getElementById('repr-lista');
+  const ef = document.getElementById('repr-filtro');
+  if (!et) return;
+  ld(et);
+  const res = await fetchCitasRec();
+  REC.citas = res?.data?.citas || [];
+  renderTablaRepr();
+  if (ef) ef.style.display = REC.citas.length ? 'flex' : 'none';
+}
+
+function renderTablaRepr() {
+  const et = document.getElementById('repr-lista');
+  if (!et) return;
+  const filtro = document.getElementById('repr-fil-estado')?.value || '';
+  const busq   = (document.getElementById('repr-fil-busq')?.value || '').toLowerCase();
+  let citas = REC.citas;
+  if (filtro) citas = citas.filter(c => c.estado === filtro);
+  if (busq)   citas = citas.filter(c =>
+    (c.paciente||'').toLowerCase().includes(busq) ||
+    (c.medico||'').toLowerCase().includes(busq) ||
+    String(c.cita_id).includes(busq));
+  et.innerHTML = citasTabla(citas, 'selCitaRepr', REC.citaSelRepr?.cita_id);
+}
+
+function selCitaRepr(id) {
+  REC.citaSelRepr = REC.citas.find(c => c.cita_id == id) || null;
+  renderTablaRepr();
+  const el = document.getElementById('repr-sel');
+  if (!el) return;
+  if (REC.citaSelRepr) {
+    el.innerHTML = citaSelCard(REC.citaSelRepr, 'limpiarSelRepr');
+    // Pre-llenar fecha y hora con los valores actuales
+    const fi = document.getElementById('rp-fecha');
+    const hi = document.getElementById('rp-hora');
+    if (fi) fi.value = REC.citaSelRepr.fecha;
+    if (hi) hi.value = REC.citaSelRepr.hora_inicio;
+    cargarHorasReprogramar();
+  } else {
+    el.innerHTML = '';
+  }
+}
+
+function limpiarSelRepr() {
+  REC.citaSelRepr = null;
+  renderTablaRepr();
+  const el = document.getElementById('repr-sel');
+  if (el) el.innerHTML = '';
+  const horas = document.getElementById('rp-horas');
+  const hi = document.getElementById('rp-hora');
+  if (horas) horas.innerHTML = '<div class="empty">Selecciona una cita para ver horarios disponibles.</div>';
+  if (hi) hi.value = '';
+}
+
+async function cargarHorasReprogramar() {
+  const cont  = document.getElementById('rp-horas');
+  const input = document.getElementById('rp-hora');
+  const resEl = document.getElementById('rp-r');
+  if (!cont) return;
+  if (!REC.citaSelRepr) {
+    cont.innerHTML = '<div class="empty">Selecciona una cita de la tabla primero.</div>';
+    if (input) input.value = '';
+    return;
+  }
+
+  const fecha = document.getElementById('rp-fecha')?.value;
+  const rut   = REC.citaSelRepr.rut_medico || REC.citaSelRepr.medico_rut || REC.citaSelRepr.medico;
+  if (!rut || !fecha) {
+    cont.innerHTML = '<div class="empty">No se pudo obtener el médico o la fecha.</div>';
+    return;
+  }
+
+  if (input) input.value = '';
+  ld(cont);
+  const res = await api('GET', '/api/citas/disponibilidad', {
+    rut_medico: rut,
+    fecha,
+    exclude_cita_id: REC.citaSelRepr.cita_id
+  });
+  const h = res?.data?.horarios || [];
+  cont.innerHTML = h.length
+    ? `<div class="fg"><label>Selecciona un horario disponible</label><div class="pills">${h.map(x=>`<div class="pill" onclick="selHoraReprogramar(this,'${x}')">${x}</div>`).join('')}</div></div>`
+    : `<div class="empty">Sin horarios disponibles para esa fecha.</div>`;
+  if (resEl) resEl.innerHTML = rp(res, 'ESB → citas.disponibilidad');
+}
+
+function selHoraReprogramar(el, hora) {
+  el.closest('.pills').querySelectorAll('.pill').forEach(p => p.classList.remove('sel'));
+  el.classList.add('sel');
+  const inp = document.getElementById('rp-hora');
+  if (inp) inp.value = hora;
+}
+
+async function reprogramarCita() {
+  const el    = document.getElementById('rp-r');
+  const fecha = document.getElementById('rp-fecha').value;
+  const hora  = document.getElementById('rp-hora').value.trim();
+
+  if (!REC.citaSelRepr) {
+    el.innerHTML = '<p style="color:var(--red);font-size:12px;margin-top:8px">Selecciona una cita de la tabla primero.</p>';
+    return;
+  }
+  if (!hora) {
+    el.innerHTML = '<p style="color:var(--red);font-size:12px;margin-top:8px">Selecciona una nueva hora disponible.</p>';
+    return;
+  }
+  ld(el);
+  const id  = REC.citaSelRepr.cita_id;
+  const res = await api('PUT', `/api/citas/${id}`, { fecha, hora });
+  el.innerHTML = rp(res, 'ESB → citas.modificar');
+  if (res?.ok) {
+    // Actualizar cita en lista local
+    const idx = REC.citas.findIndex(c => c.cita_id == id);
+    if (idx >= 0) { REC.citas[idx].fecha = fecha; REC.citas[idx].hora_inicio = hora; }
+    renderTablaRepr();
+    selCitaRepr(id); // refrescar card
+  }
+}
+
+// ── CANCELAR ──────────────────────────────────────────────────────────
+async function cargarCitasParaCancelar() {
+  const et = document.getElementById('canc-lista');
+  const ef = document.getElementById('canc-filtro');
+  if (!et) return;
+  ld(et);
+  const res = await fetchCitasRec();
+  REC.citas = res?.data?.citas || [];
+  renderTablaCanc();
+  if (ef) ef.style.display = REC.citas.length ? 'flex' : 'none';
+}
+
+function renderTablaCanc() {
+  const et = document.getElementById('canc-lista');
+  if (!et) return;
+  const filtro = document.getElementById('canc-fil-estado')?.value || '';
+  const busq   = (document.getElementById('canc-fil-busq')?.value || '').toLowerCase();
+  let citas = REC.citas.filter(c => c.estado !== 'cancelada'); // no mostrar ya canceladas
+  if (filtro) citas = citas.filter(c => c.estado === filtro);
+  if (busq)   citas = citas.filter(c =>
+    (c.paciente||'').toLowerCase().includes(busq) ||
+    (c.medico||'').toLowerCase().includes(busq) ||
+    String(c.cita_id).includes(busq));
+  et.innerHTML = citasTabla(citas, 'selCitaCanc', REC.citaSelCanc?.cita_id);
+}
+
+function selCitaCanc(id) {
+  REC.citaSelCanc = REC.citas.find(c => c.cita_id == id) || null;
+  renderTablaCanc();
+  const el = document.getElementById('canc-sel');
+  if (!el) return;
+  if (REC.citaSelCanc) {
+    el.innerHTML = citaSelCard(REC.citaSelCanc, 'limpiarSelCanc');
+  } else {
+    el.innerHTML = '';
+  }
+}
+
+function limpiarSelCanc() {
+  REC.citaSelCanc = null;
+  renderTablaCanc();
+  const el = document.getElementById('canc-sel');
+  if (el) el.innerHTML = '';
+}
+
+async function cancelarCita() {
+  const el     = document.getElementById('ca-r');
+  const motivo = document.getElementById('ca-mot').value.trim();
+
+  if (!REC.citaSelCanc) {
+    el.innerHTML = '<p style="color:var(--red);font-size:12px;margin-top:8px">Selecciona una cita de la tabla primero.</p>';
+    return;
+  }
+  ld(el);
+  const id  = REC.citaSelCanc.cita_id;
+  const res = await api('DELETE', `/api/citas/${id}`, { motivo });
+  el.innerHTML = rp(res, 'ESB → citas.cancelar');
+  if (res?.ok) {
+    const idx = REC.citas.findIndex(c => c.cita_id == id);
+    if (idx >= 0) REC.citas[idx].estado = 'cancelada';
+    limpiarSelCanc();
+    renderTablaCanc();
+  }
+}
+
+// ── Views ─────────────────────────────────────────────────────────────
+const V = {
+
+  // PACIENTE
+  'pac-disp': () => `
+    <div class="ph"><h2>Disponibilidad médica</h2><p>Consulta los horarios disponibles de un médico</p></div>
+    <div class="panel">
+      <div class="pt">Consultar disponibilidad</div>
+      <div class="g2">
+        <div class="fg"><label>RUT del médico</label><input id="pd-rut" value="33333333-3"></div>
+        <div class="fg"><label>Fecha</label><input type="date" id="pd-fecha" value="${nextWD(0)}"></div>
+      </div>
+      <button class="btn btn-sm" onclick="consultarDisp('pd-rut','pd-fecha','pd-res')">Consultar</button>
+      <div id="pd-res"></div>
+    </div>`,
+
+  'pac-agen': () => `
+    <div class="ph"><h2>Agendar cita</h2><p>Reserva una hora disponible</p></div>
+    <div class="panel">
+      <div class="pt">Seleccionar horario</div>
+      <div class="g2">
+        <div class="fg"><label>RUT del médico</label><input id="ag-rut" value="33333333-3"></div>
+        <div class="fg"><label>Fecha</label><input type="date" id="ag-fecha" value="${nextWD(0)}"></div>
+      </div>
+      <button class="btn btn-sm btn-ghost" onclick="cargarHoras()">Ver horarios disponibles</button>
+      <div id="ag-horas"></div>
+      <div class="fg mt12"><label>Hora seleccionada</label><input id="ag-hora" placeholder="Selecciona un horario arriba"></div>
+      <div class="fg"><label>Sala</label><input id="ag-sala" value="Box 1"></div>
+      <button class="btn btn-sm btn-success mt4" onclick="agendarCita()">Confirmar cita</button>
+      <div id="ag-res"></div>
+    </div>`,
+
+  'pac-hist': () => `
+    <div class="ph"><h2>Mis citas</h2><p>Historial completo</p></div>
+    <div class="panel">
+      <div class="pt">Historial de citas</div>
+      <button class="btn btn-sm" onclick="cargarHistorial()">Cargar historial</button>
+      <div id="his-t" class="mt12"></div>
+      <div id="his-r"></div>
+    </div>`,
+
+  'pac-fich': () => `
+    <div class="ph"><h2>Ficha clínica</h2><p>Tu información clínica completa</p></div>
+    <div class="panel">
+      <div class="pt">Datos clínicos</div>
+      <button class="btn btn-sm" onclick="cargarFicha()">Cargar ficha</button>
+      <div id="fic-r" class="mt12"></div>
+    </div>`,
+
+  // MÉDICO
+  'med-agen': () => `
+    <div class="ph"><h2>Agenda del día</h2><p>Disponibilidad para la fecha seleccionada</p></div>
+    <div class="panel">
+      <div class="pt">Seleccionar fecha</div>
+      <div class="g2 fg"><label>Fecha</label><input type="date" id="mag-fecha" value="${nextWD(0)}"></div>
+      <button class="btn btn-sm" onclick="cargarAgendaMedico()">Ver disponibilidad</button>
+      <div id="mag-t" class="mt12"></div>
+      <div id="mag-r"></div>
+    </div>`,
+
+  'med-aten': () => `
+    <div class="ph"><h2>Registrar atención</h2><p>Registra diagnóstico de la consulta</p></div>
+    <div class="panel">
+      <div class="pt">Nueva atención</div>
+      <div class="g2">
+        <div class="fg"><label>RUT del paciente</label><input id="at-rut" value="11111111-1"></div>
+        <div class="fg"><label>ID de cita (opcional)</label><input id="at-cita" placeholder="Ej: 1"></div>
+      </div>
+      <div class="fg"><label>Diagnóstico</label><textarea id="at-diag">Control preventivo sin hallazgos críticos</textarea></div>
+      <div class="fg"><label>Observaciones</label><textarea id="at-obs">Paciente estable.</textarea></div>
+      <button class="btn btn-sm btn-success" onclick="registrarAtencion()">Registrar atención</button>
+      <div id="at-r"></div>
+    </div>`,
+
+  'med-rec': () => `
+    <div class="ph"><h2>Emitir receta</h2><p>Prescripción médica</p></div>
+    <div class="panel">
+      <div class="pt">Nueva receta</div>
+      <div class="g2">
+        <div class="fg"><label>RUT del paciente</label><input id="rc-rut" value="11111111-1"></div>
+        <div class="fg"><label>Medicamento</label><input id="rc-med" value="Paracetamol 500mg"></div>
+        <div class="fg"><label>Dosificación</label><input id="rc-dos" value="1 comprimido cada 8 horas"></div>
+        <div class="fg"><label>Duración</label><input id="rc-dur" value="3 días"></div>
+      </div>
+      <button class="btn btn-sm btn-success" onclick="emitirReceta()">Emitir receta</button>
+      <div id="rc-r"></div>
+    </div>`,
+
+  // RECEPCIONISTA
+  'rec-disp': () => `
+    <div class="ph"><h2>Disponibilidad médica</h2><p>Verifica la agenda de un médico</p></div>
+    <div class="panel">
+      <div class="pt">Consultar disponibilidad</div>
+      <div class="g2">
+        <div class="fg"><label>RUT del médico</label><input id="rd-rut" value="33333333-3"></div>
+        <div class="fg"><label>Fecha</label><input type="date" id="rd-fecha" value="${nextWD(0)}"></div>
+      </div>
+      <button class="btn btn-sm" onclick="consultarDisp('rd-rut','rd-fecha','rd-res')">Consultar</button>
+      <div id="rd-res"></div>
+    </div>`,
+
+  'rec-repr': () => `
+    <div class="ph"><h2>Reprogramar cita</h2><p>Selecciona una cita y cambia su fecha u hora</p></div>
+
+    <div class="panel">
+      <div class="pt">Citas reservadas</div>
+      <div class="filter-bar" id="repr-filtro" style="display:none">
+        <select id="repr-fil-estado" onchange="renderTablaRepr()">
+          <option value="">Todos los estados</option>
+          <option value="confirmada">Confirmada</option>
+          <option value="solicitada">Solicitada</option>
+          <option value="atendida">Atendida</option>
+          <option value="inasistida">Inasistida</option>
+        </select>
+        <input type="text" id="repr-fil-busq" placeholder="Buscar paciente o médico…" oninput="renderTablaRepr()" style="max-width:220px">
+        <button class="btn btn-sm btn-ghost" onclick="cargarCitasParaReprogramar()">↻ Actualizar</button>
+      </div>
+      <div id="repr-lista"><div class="loader"></div></div>
+    </div>
+
+    <div class="panel">
+      <div class="pt">Nueva fecha y hora</div>
+      <p class="info-msg" style="margin-bottom:12px">Haz clic en una fila de arriba para seleccionar la cita a reprogramar.</p>
+      <div id="repr-sel"></div>
+      <div class="g2">
+        <div class="fg"><label>Nueva fecha</label><input type="date" id="rp-fecha" value="${nextWD(2)}" onchange="cargarHorasReprogramar()"></div>
+        <div class="fg"><label>Nueva hora</label><input id="rp-hora" placeholder="Selecciona un horario disponible" readonly></div>
+      </div>
+      <button class="btn btn-sm btn-ghost" onclick="cargarHorasReprogramar()">Ver horarios disponibles</button>
+      <div id="rp-horas" class="mt12"><div class="empty">Selecciona una cita para ver horarios disponibles.</div></div>
+      <button class="btn btn-sm btn-danger mt12" onclick="reprogramarCita()">Reprogramar cita</button>
+      <div id="rp-r"></div>
+    </div>`,
+
+  'rec-canc': () => `
+    <div class="ph"><h2>Cancelar cita</h2><p>Selecciona una cita de la lista para cancelarla</p></div>
+
+    <div class="panel">
+      <div class="pt">Citas activas</div>
+      <div class="filter-bar" id="canc-filtro" style="display:none">
+        <select id="canc-fil-estado" onchange="renderTablaCanc()">
+          <option value="">Todos los estados</option>
+          <option value="confirmada">Confirmada</option>
+          <option value="solicitada">Solicitada</option>
+          <option value="atendida">Atendida</option>
+          <option value="inasistida">Inasistida</option>
+        </select>
+        <input type="text" id="canc-fil-busq" placeholder="Buscar paciente o médico…" oninput="renderTablaCanc()" style="max-width:220px">
+        <button class="btn btn-sm btn-ghost" onclick="cargarCitasParaCancelar()">↻ Actualizar</button>
+      </div>
+      <div id="canc-lista"><div class="loader"></div></div>
+    </div>
+
+    <div class="panel">
+      <div class="pt">Confirmar cancelación</div>
+      <p class="info-msg" style="margin-bottom:12px">Haz clic en una fila de arriba para seleccionar la cita a cancelar.</p>
+      <div id="canc-sel"></div>
+      <div class="fg"><label>Motivo de cancelación</label><input id="ca-mot" value="Solicitud del paciente"></div>
+      <button class="btn btn-sm btn-danger" onclick="cancelarCita()">Cancelar cita</button>
+      <div id="ca-r"></div>
+    </div>`,
+
+  // ADMINISTRADOR
+  'adm-usu': () => `
+    <div class="ph"><h2>Usuarios</h2><p>Todos los usuarios registrados en SGIM</p></div>
+    <div class="panel">
+      <div class="pt">Listado de usuarios</div>
+      <button class="btn btn-sm" onclick="cargarUsuarios()">Cargar usuarios</button>
+      <div id="usu-t" class="mt12"></div>
+      <div id="usu-r"></div>
+    </div>`,
+
+  'adm-rep': () => `
+    <div class="ph"><h2>Reporte de citas</h2><p>Estadísticas del sistema</p></div>
+    <div class="panel">
+      <div class="pt">Resumen por estado</div>
+      <button class="btn btn-sm" onclick="cargarReportes()">Generar reporte</button>
+      <div id="rep-s" class="mt12"></div>
+    </div>`,
+
+  'adm-log': () => `
+    <div class="ph"><h2>Logs de auditoría</h2><p>Últimas 100 acciones registradas</p></div>
+    <div class="panel">
+      <div class="pt">Auditoría del sistema</div>
+      <button class="btn btn-sm" onclick="cargarLogs()">Cargar logs</button>
+      <div id="log-t" class="mt12"></div>
+      <div id="log-r"></div>
+    </div>`,
+
+  'adm-repl': () => `
+    <div class="ph"><h2>Replicar base de datos</h2><p>Copia la BD principal a un archivo réplica</p></div>
+    <div class="panel">
+      <div class="pt">Replicación diaria</div>
+      <div class="fg"><label>Archivo destino</label><input id="repl-dest" value="sgim_replica.sqlite3"></div>
+      <button class="btn btn-sm" onclick="replicarBD()">Ejecutar replicación</button>
+      <div id="repl-r"></div>
+    </div>`,
+};
+
+// ── Actions (paciente / médico / admin — sin cambios) ──────────────────
+
+async function consultarDisp(rutId, fechaId, resId) {
+  const rut   = document.getElementById(rutId).value.trim();
+  const fecha = document.getElementById(fechaId).value;
+  const el    = document.getElementById(resId);
+  ld(el);
+  const res = await api('GET', '/api/citas/disponibilidad', { rut_medico: rut, fecha });
+  const h   = res?.data?.horarios || [];
+  el.innerHTML = `
+    ${h.length ? `<div class="fg mt12"><label>Horarios libres</label><div class="pills">${h.map(x=>`<div class="pill" onclick="selHora(this,'${x}')">${x}</div>`).join('')}</div></div>` : ''}
+    ${rp(res)}`;
+}
+
+function selHora(el, hora) {
+  el.closest('.pills').querySelectorAll('.pill').forEach(p => p.classList.remove('sel'));
+  el.classList.add('sel');
+  const inp = document.getElementById('ag-hora');
+  if (inp) inp.value = hora;
+}
+
+async function cargarHoras() {
+  const rut   = document.getElementById('ag-rut').value.trim();
+  const fecha = document.getElementById('ag-fecha').value;
+  const el    = document.getElementById('ag-horas');
+  ld(el);
+  const res = await api('GET', '/api/citas/disponibilidad', { rut_medico: rut, fecha });
+  const h   = res?.data?.horarios || [];
+  el.innerHTML = h.length
+    ? `<div class="fg mt12"><label>Selecciona un horario</label><div class="pills">${h.map(x=>`<div class="pill" onclick="selHora(this,'${x}')">${x}</div>`).join('')}</div></div>`
+    : `<div class="empty">Sin horarios disponibles para esa fecha.</div>`;
+}
+
+async function agendarCita() {
+  const rut_medico = document.getElementById('ag-rut').value.trim();
+  const fecha      = document.getElementById('ag-fecha').value;
+  const hora       = document.getElementById('ag-hora').value.trim();
+  const sala       = document.getElementById('ag-sala').value.trim();
+  const el         = document.getElementById('ag-res');
+  if (!hora) { el.innerHTML = '<p style="color:var(--red);font-size:12px;margin-top:8px">Selecciona una hora primero.</p>'; return; }
+  ld(el);
+  el.innerHTML = rp(await api('POST', '/api/citas/crear', { rut_medico, fecha, hora, sala }));
+}
+
+async function cargarHistorial() {
+  const et = document.getElementById('his-t');
+  const er = document.getElementById('his-r');
+  ld(et);
+  const res   = await api('GET', '/api/citas/historial');
+  const citas = res?.data?.citas || [];
+  et.innerHTML = citas.length ? `
+    <table class="tbl">
+      <thead><tr><th>ID</th><th>Médico</th><th>Especialidad</th><th>Fecha</th><th>Hora</th><th>Estado</th></tr></thead>
+      <tbody>${citas.map(c=>`<tr>
+        <td><code>${c.cita_id}</code></td><td>${c.medico||'—'}</td><td>${c.especialidad||'—'}</td>
+        <td>${c.fecha}</td><td>${c.hora_inicio}</td><td>${estadoBadge(c.estado)}</td>
+      </tr>`).join('')}</tbody>
+    </table>` : `<div class="empty">Sin citas registradas.</div>`;
+  er.innerHTML = rp(res);
+}
+
+async function cargarFicha() {
+  const rut = S.user?.rut;
+  const el  = document.getElementById('fic-r');
+  ld(el);
+  const res = await api('GET', `/api/clinico/paciente/${rut}/ficha`);
+  const p   = res?.data?.paciente;
+  const fi  = res?.data?.fichas  || [];
+  const re  = res?.data?.recetas || [];
+  if (!p) { el.innerHTML = rp(res); return; }
+  el.innerHTML = `
+    <div class="stats" style="margin-bottom:14px">
+      <div class="sc"><div class="sl">RUT</div><div class="sv" style="font-size:14px">${p.rut_cliente}</div></div>
+      <div class="sc"><div class="sl">Nombre</div><div class="sv" style="font-size:14px">${p.nombre}</div></div>
+      <div class="sc"><div class="sl">Edad</div><div class="sv">${p.edad}</div><div class="ss">${p.sexo}</div></div>
+      <div class="sc"><div class="sl">Alergias</div><div class="sv" style="font-size:13px">${p.alergias||'—'}</div></div>
+    </div>
+    ${fi.length ? `<div class="pt" style="margin-bottom:8px">Fichas clínicas</div>
+    <table class="tbl" style="margin-bottom:14px">
+      <thead><tr><th>ID</th><th>Diagnóstico</th><th>Observaciones</th><th>Fecha</th></tr></thead>
+      <tbody>${fi.map(f=>`<tr><td>${f.ficha_id}</td><td>${f.diagnostico}</td><td>${f.observaciones||'—'}</td><td>${f.fecha_registro?.slice(0,10)}</td></tr>`).join('')}</tbody>
+    </table>` : ''}
+    ${re.length ? `<div class="pt" style="margin-bottom:8px">Recetas</div>
+    <table class="tbl">
+      <thead><tr><th>ID</th><th>Medicamento</th><th>Dosificación</th><th>Duración</th><th>Fecha</th></tr></thead>
+      <tbody>${re.map(r=>`<tr><td>${r.receta_id}</td><td>${r.medicamento}</td><td>${r.dosificacion}</td><td>${r.duracion_tratamiento}</td><td>${r.fecha_emision?.slice(0,10)}</td></tr>`).join('')}</tbody>
+    </table>` : ''}
+    ${rp(res, 'ESB → clinico.ficha')}`;
+}
+
+async function cargarAgendaMedico() {
+  const fecha = document.getElementById('mag-fecha').value;
+  const et    = document.getElementById('mag-t');
+  const er    = document.getElementById('mag-r');
+  ld(et);
+  const res = await api('GET', '/api/citas/disponibilidad', { rut_medico: S.user?.rut, fecha });
+  const h   = res?.data?.horarios || [];
+  et.innerHTML = h.length
+    ? `<div class="fg"><label>Horarios libres — ${fecha}</label><div class="pills">${h.map(x=>`<div class="pill">${x}</div>`).join('')}</div></div>`
+    : `<div class="empty">Sin disponibilidad ese día.</div>`;
+  er.innerHTML = rp(res, 'ESB → citas.disponibilidad');
+}
+
+async function registrarAtencion() {
+  const el = document.getElementById('at-r');
+  ld(el);
+  el.innerHTML = rp(await api('POST', '/api/clinico/atencion', {
+    rut_cliente:   document.getElementById('at-rut').value.trim(),
+    diagnostico:   document.getElementById('at-diag').value.trim(),
+    observaciones: document.getElementById('at-obs').value.trim(),
+    cita_id:       document.getElementById('at-cita').value || undefined,
+  }), 'ESB → clinico.registrar_atencion');
+}
+
+async function emitirReceta() {
+  const el = document.getElementById('rc-r');
+  ld(el);
+  el.innerHTML = rp(await api('POST', '/api/clinico/receta', {
+    rut_cliente:          document.getElementById('rc-rut').value.trim(),
+    medicamento:          document.getElementById('rc-med').value.trim(),
+    dosificacion:         document.getElementById('rc-dos').value.trim(),
+    duracion_tratamiento: document.getElementById('rc-dur').value.trim(),
+  }), 'ESB → clinico.receta_emitir');
+}
+
+async function cargarUsuarios() {
+  const et = document.getElementById('usu-t');
+  const er = document.getElementById('usu-r');
+  ld(et);
+  const res = await api('GET', '/api/admin/usuarios');
+  const u   = res?.data?.usuarios || [];
+  const rc  = { paciente:'b-blue', medico:'b-green', recepcionista:'b-amber', administrador:'b-red' };
+  et.innerHTML = u.length ? `
+    <table class="tbl">
+      <thead><tr><th>RUT</th><th>Nombre</th><th>Email</th><th>Rol</th></tr></thead>
+      <tbody>${u.map(x=>`<tr>
+        <td><code>${x.rut}</code></td><td>${x.nombre}</td><td>${x.email}</td>
+        <td><span class="badge ${rc[x.rol]||'b-grey'}">${x.rol}</span></td>
+      </tr>`).join('')}</tbody>
+    </table>` : `<div class="empty">Sin usuarios.</div>`;
+  er.innerHTML = rp(res, 'ESB → admin.usuarios');
+}
+
+async function cargarReportes() {
+  const el  = document.getElementById('rep-s');
+  ld(el);
+  const res = await api('GET', '/api/reportes/citas');
+  const rs  = res?.data?.resumen || [];
+  const tot = rs.reduce((s,r) => s+(r.total||0), 0);
+  el.innerHTML = `
+    <div class="stats">
+      <div class="sc"><div class="sl">Total citas</div><div class="sv">${tot}</div></div>
+      ${rs.map(r=>`<div class="sc"><div class="sl">${r.estado}</div><div class="sv">${r.total}</div><div class="ss">${tot?((r.total/tot)*100).toFixed(1)+'%':'—'}</div></div>`).join('')}
+    </div>
+    ${rp(res, 'ESB → reporteria.citas')}`;
+}
+
+async function cargarLogs() {
+  const et = document.getElementById('log-t');
+  const er = document.getElementById('log-r');
+  ld(et);
+  const res  = await api('GET', '/api/admin/logs');
+  const logs = res?.data?.logs || [];
+  et.innerHTML = logs.length ? `
+    <table class="tbl">
+      <thead><tr><th>#</th><th>Usuario</th><th>Acción</th><th>Tabla</th><th>Timestamp</th></tr></thead>
+      <tbody>${logs.map(l=>`<tr>
+        <td>${l.log_id}</td><td><code>${l.usuario_id||'—'}</code></td>
+        <td><span class="badge b-blue">${l.accion}</span></td>
+        <td>${l.tabla_afectada}</td>
+        <td style="color:var(--muted);font-size:11px">${l.timestamp}</td>
+      </tr>`).join('')}</tbody>
+    </table>` : `<div class="empty">Sin registros.</div>`;
+  er.innerHTML = rp(res, 'ESB → admin.logs');
+}
+
+async function replicarBD() {
+  const el = document.getElementById('repl-r');
+  ld(el);
+  el.innerHTML = rp(await api('POST', '/api/admin/replicar', { destino: document.getElementById('repl-dest').value.trim() }), 'ESB → admin.replicar');
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && document.getElementById('login-screen').style.display !== 'none') doLogin();
+});
+</script>
+</body>
+</html>
